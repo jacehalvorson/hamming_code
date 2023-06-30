@@ -1,21 +1,45 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include "hamming.h"
 
-#define CHUNK_SIZE_BITS 11
-#define CHUNKS_IN_BUFFER 16
-#define READ_SIZE 512
-
-int main( int argc, char **argv )
+chunk *populateChunk( unsigned int *rawDataPtr )
 {
-   if ( argc != 2 )
+   chunk *newChunk = malloc( sizeof( chunk ) );
+   if ( newChunk == NULL )
    {
-      printf( "Usage: %s <filename>\n", argv[0] );
-      return 1;
+      perror( "Error allocating memory" );
+      free( newChunk );
+      return NULL;
    }
 
-   char *buffer = malloc( CHUNK_SIZE_BITS * CHUNKS_IN_BUFFER );
+   // Initialize all bits to 0
+   memset( newChunk, 0, sizeof( chunk ) );
+
+   // Fill in the data bits
+   newChunk->dataBitsThree = ( rawDataPtr[0] & 1 );
+   newChunk->dataBitsFiveToSeven = ( rawDataPtr[0] >> 1 ) & 7;
+   newChunk->dataBitsNineToFifteen = ( rawDataPtr[0] >> 4 ) & 127;
+
+   // XOR every activated bit
+   unsigned int xorResult = 0;
+   for ( int i = 0; i < RAW_CHUNK_SIZE_BITS; i++ )
+   {
+      if ( ( rawDataPtr[0] >> i ) & 1 )
+      {
+         xorResult ^= i;
+      }
+   }
+
+   printf( "XOR result: %d\n", xorResult );
+   return newChunk;
+}
+
+int encode( char *fileName )
+{
+   char *buffer = malloc( RAW_CHUNK_SIZE_BITS * CHUNKS_IN_BUFFER );
    if ( buffer == NULL )
    {
       perror( "Error allocating memory" );
@@ -23,7 +47,7 @@ int main( int argc, char **argv )
       return 1;
    }
 
-   int fd = open( argv[1], O_RDONLY );
+   int fd = open( fileName, O_RDONLY );
    if ( fd == -1 )
    {
       perror( "Error opening file" );
@@ -41,7 +65,7 @@ int main( int argc, char **argv )
       free( buffer );
       return 1;
    }
-   while ( bytesRead == CHUNK_SIZE_BITS && bufferOffset < ( ( CHUNK_SIZE_BITS * ( CHUNKS_IN_BUFFER - 1 ) ) ) )
+   while ( bytesRead == RAW_CHUNK_SIZE_BITS && bufferOffset < ( ( RAW_CHUNK_SIZE_BITS * ( CHUNKS_IN_BUFFER - 1 ) ) ) )
    {
       bytesRead = read( fd, buffer + bufferOffset, READ_SIZE );
       if ( bytesRead == -1 )
@@ -53,23 +77,17 @@ int main( int argc, char **argv )
       }
 
       bufferOffset += bytesRead;
-
-      char *chunk = buffer + bufferOffset - CHUNK_SIZE_BITS;
-      unsigned int bitIndex = 0;
-      char currentBit = chunk[0];
-      // printf( "%s\n", chunk );
-      while ( bitIndex < CHUNK_SIZE_BITS )
-      {
-         printf( "%c", currentBit & 1 ? '1' : '0' );
-
-         bitIndex++;
-         currentBit = ( currentBit >> 1 );
-      }
-      printf( "\n" );
    }
-   printf( "%s\n", buffer );
+
+   // Iterate through the buffer, passing 11 bits at a time to populateChunk
+
+
+
+   unsigned int *rawData = ( unsigned int * ) buffer + bufferOffset - RAW_CHUNK_SIZE_BITS;
+   chunk *c = populateChunk( rawData );
 
    close( fd );
    free( buffer );
+   free( c );
    return 0;
 }

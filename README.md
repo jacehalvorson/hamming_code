@@ -1,5 +1,5 @@
 # hamming_code
 ```
-gcc hamming.c
+gcc hamming.h hamming.c
 ./a.out <file>
 ```
