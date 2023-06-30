@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "hamming.h"
 
 int main( int argc, char **argv )
@@ -9,7 +10,7 @@ int main( int argc, char **argv )
       return 1;
    }
 
-   unsigned int rawData = 0x7FF;
+   unsigned int rawData = 0xeef;
    printf( "Raw data: %u\n", rawData );
    chunk *encodedChunk = populateChunk( &rawData );
    printf( "Data bits: %u %u %u %u %u %u\n",
@@ -21,5 +22,6 @@ int main( int argc, char **argv )
            encodedChunk->parityEight
    );
 
+   free( encodedChunk );
    return 0;
 }

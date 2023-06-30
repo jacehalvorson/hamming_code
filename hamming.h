@@ -3,6 +3,7 @@
 
 #define RAW_CHUNK_SIZE_BITS 11
 #define CHUNK_SIZE_BITS 16
+#define PARITY_BIT_COUNT 4
 #define CHUNKS_IN_BUFFER 64
 #define READ_SIZE 512
 

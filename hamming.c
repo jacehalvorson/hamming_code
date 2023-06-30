@@ -34,6 +34,12 @@ chunk *populateChunk( unsigned int *rawDataPtr )
    }
 
    printf( "XOR result: %d\n", xorResult );
+   for ( int i = 0; i < 3; i++ )
+   {
+      newChunk->parityZeroToTwo |= ( ( xorResult >> i ) & 1 ) << i;
+   }
+   newChunk->parityFour = ( xorResult >> 3 ) & 1;
+   newChunk->parityEight = ( xorResult >> 4 ) & 1;
    return newChunk;
 }
 
@@ -44,7 +50,7 @@ int encode( char *fileName )
    {
       perror( "Error allocating memory" );
       free( buffer );
-      return 1;
+      return 1; 
    }
 
    int fd = open( fileName, O_RDONLY );
