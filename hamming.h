@@ -11,11 +11,11 @@
 #define BITS_PER_BYTE 8
 
 typedef struct chunk {
-   unsigned int parityZeroToTwo : 3;
+   unsigned int parityBitsZeroToTwo : 3;
    unsigned int dataBitsThree : 1;
-   unsigned int parityFour : 1;
+   unsigned int parityBitsFour : 1;
    unsigned int dataBitsFiveToSeven : 3;
-   unsigned int parityEight : 1;
+   unsigned int parityBitsEight : 1;
    unsigned int dataBitsNineToFifteen : 7;
 } chunk;
 

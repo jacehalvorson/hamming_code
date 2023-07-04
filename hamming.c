@@ -13,19 +13,19 @@ void printBinary(unsigned int num, int bits) {
 }
 
 void printChunk(const chunk* c) {
-   printBinary(c->parityZeroToTwo, 3);
+   printBinary(c->parityBitsZeroToTwo, 3);
 
    printBinary(c->dataBitsThree, 1);
    printf("\n");
 
-   printBinary(c->parityFour, 1);
+   printBinary(c->parityBitsFour, 1);
 
    printBinary(c->dataBitsFiveToSeven, 3);
    printf("\n");
 
-   printBinary(c->parityEight, 1);
+   printBinary(c->parityBitsEight, 1);
 
-   printBinary( ( c->dataBitsNineToFifteen & 0x70 ) >> 4, 3 );
+   printBinary( ( c->dataBitsNineToFifteen & 0x70 ) >> 8, 3 );
    printf("\n");
 
    printBinary(c->dataBitsNineToFifteen & 0xF, 4);
@@ -58,10 +58,10 @@ chunk populateChunk( unsigned int rawData )
    printf( "XOR result: %d\n", xorResult );
    // for ( int i = 0; i < 3; i++ )
    // {
-   //    newChunk.parityZeroToTwo |= ( ( xorResult >> i ) & 1 ) << i;
+   //    newChunk.parityBitsZeroToTwo |= ( ( xorResult >> i ) & 1 ) << i;
    // }
-   // newChunk.parityFour = ( xorResult >> 3 ) & 1;
-   // newChunk.parityEight = ( xorResult >> 4 ) & 1;
+   // newChunk.parityBitsFour = ( xorResult >> 3 ) & 1;
+   // newChunk.parityBitsEight = ( xorResult >> 4 ) & 1;
 
    return newChunk;
 }

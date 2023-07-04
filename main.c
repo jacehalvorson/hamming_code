@@ -19,9 +19,9 @@ int main( int argc, char **argv )
    //         encodedChunk.dataBitsThree,
    //         encodedChunk.dataBitsFiveToSeven,
    //         encodedChunk.dataBitsNineToFifteen,
-   //         encodedChunk.parityZeroToTwo,
-   //         encodedChunk.parityFour,
-   //         encodedChunk.parityEight
+   //         encodedChunk.parityBitsZeroToTwo,
+   //         encodedChunk.parityBitsFour,
+   //         encodedChunk.parityBitsEight
    // );
 
    return 0;
