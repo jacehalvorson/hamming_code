@@ -25,10 +25,10 @@ void printChunk(const chunk* c) {
 
    printBinary(c->parityEight, 1);
 
-   printBinary(c->dataBitsNineToFifteen & 0x7F00, 3);
+   printBinary( ( c->dataBitsNineToFifteen & 0x70 ) >> 4, 3 );
    printf("\n");
 
-   printBinary(c->dataBitsNineToFifteen & 0xFF, 4);
+   printBinary(c->dataBitsNineToFifteen & 0xF, 4);
    printf("\n");
 }
 
