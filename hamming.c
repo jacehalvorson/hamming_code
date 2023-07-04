@@ -25,7 +25,7 @@ void printChunk(const chunk* c) {
 
    printBinary(c->parityBitsEight, 1);
 
-   printBinary( ( c->dataBitsNineToFifteen & 0x70 ) >> 8, 3 );
+   printBinary( ( c->dataBitsNineToFifteen & 0x70 ) >> 4, 3 );
    printf("\n");
 
    printBinary(c->dataBitsNineToFifteen & 0xF, 4);
@@ -43,7 +43,6 @@ chunk populateChunk( unsigned int rawData )
    newChunk.dataBitsThree = ( rawData >> ( RAW_CHUNK_SIZE_BITS - 1 ) ) & 0x1;
    newChunk.dataBitsFiveToSeven = ( rawData >> ( RAW_CHUNK_SIZE_BITS - 4 ) ) & 0x7;
    newChunk.dataBitsNineToFifteen = rawData & 0x7F;
-   printf( "%d == %d\n", rawData & 0x7F, newChunk.dataBitsNineToFifteen );
 
    // XOR every activated bit
    unsigned int xorResult = 0;
@@ -56,12 +55,13 @@ chunk populateChunk( unsigned int rawData )
    }
 
    printf( "XOR result: %d\n", xorResult );
-   // for ( int i = 0; i < 3; i++ )
-   // {
-   //    newChunk.parityBitsZeroToTwo |= ( ( xorResult >> i ) & 1 ) << i;
-   // }
-   // newChunk.parityBitsFour = ( xorResult >> 3 ) & 1;
-   // newChunk.parityBitsEight = ( xorResult >> 4 ) & 1;
+   for ( int i = 0; i < 2; i++ )
+   {
+      printf( "Setting bit %d to %d\n", i, ( xorResult >> i ) & 1 );
+      newChunk.parityBitsZeroToTwo |= ( ( xorResult >> i ) & 1 ) << i;
+   }
+   newChunk.parityBitsFour = ( xorResult >> 2 ) & 1;
+   newChunk.parityBitsEight = ( xorResult >> 3 ) & 1;
 
    return newChunk;
 }
