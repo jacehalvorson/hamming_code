@@ -5,51 +5,76 @@
 #include <fcntl.h>
 #include "hamming.h"
 
-chunk *populateChunk( unsigned int *rawDataPtr )
+void printBinary(unsigned int num, int bits) {
+    if (bits > 0) {
+        printBinary(num >> 1, bits - 1);
+        printf("%d", num & 1);
+    }
+}
+
+void printChunk(const chunk* c) {
+   printBinary(c->parityZeroToTwo, 3);
+
+   printBinary(c->dataBitsThree, 1);
+   printf("\n");
+
+   printBinary(c->parityFour, 1);
+
+   printBinary(c->dataBitsFiveToSeven, 3);
+   printf("\n");
+
+   printBinary(c->parityEight, 1);
+
+   printBinary(c->dataBitsNineToFifteen & 0x7F00, 3);
+   printf("\n");
+
+   printBinary(c->dataBitsNineToFifteen & 0xFF, 4);
+   printf("\n");
+}
+
+chunk populateChunk( unsigned int rawData )
 {
-   chunk *newChunk = malloc( sizeof( chunk ) );
-   if ( newChunk == NULL )
-   {
-      perror( "Error allocating memory" );
-      free( newChunk );
-      return NULL;
-   }
+   chunk newChunk;
 
    // Initialize all bits to 0
-   memset( newChunk, 0, sizeof( chunk ) );
+   memset( &newChunk, 0, sizeof( chunk ) );
 
    // Fill in the data bits
-   newChunk->dataBitsThree = ( rawDataPtr[0] & 1 );
-   newChunk->dataBitsFiveToSeven = ( rawDataPtr[0] >> 1 ) & 7;
-   newChunk->dataBitsNineToFifteen = ( rawDataPtr[0] >> 4 ) & 127;
+   newChunk.dataBitsThree = ( rawData >> ( RAW_CHUNK_SIZE_BITS - 1 ) ) & 0x1;
+   newChunk.dataBitsFiveToSeven = ( rawData >> ( RAW_CHUNK_SIZE_BITS - 4 ) ) & 0x7;
+   newChunk.dataBitsNineToFifteen = rawData & 0x7F;
+   printf( "%d == %d\n", rawData & 0x7F, newChunk.dataBitsNineToFifteen );
 
    // XOR every activated bit
    unsigned int xorResult = 0;
    for ( int i = 0; i < RAW_CHUNK_SIZE_BITS; i++ )
    {
-      if ( ( rawDataPtr[0] >> i ) & 1 )
+      if ( ( rawData >> i ) & 1 )
       {
          xorResult ^= i;
       }
    }
 
    printf( "XOR result: %d\n", xorResult );
-   for ( int i = 0; i < 3; i++ )
-   {
-      newChunk->parityZeroToTwo |= ( ( xorResult >> i ) & 1 ) << i;
-   }
-   newChunk->parityFour = ( xorResult >> 3 ) & 1;
-   newChunk->parityEight = ( xorResult >> 4 ) & 1;
+   // for ( int i = 0; i < 3; i++ )
+   // {
+   //    newChunk.parityZeroToTwo |= ( ( xorResult >> i ) & 1 ) << i;
+   // }
+   // newChunk.parityFour = ( xorResult >> 3 ) & 1;
+   // newChunk.parityEight = ( xorResult >> 4 ) & 1;
+
    return newChunk;
 }
 
 int encode( char *fileName )
 {
+   chunk *chunks = malloc( sizeof( chunk ) * CHUNKS_IN_BUFFER );
    char *buffer = malloc( RAW_CHUNK_SIZE_BITS * CHUNKS_IN_BUFFER );
    if ( buffer == NULL )
    {
       perror( "Error allocating memory" );
       free( buffer );
+      free( chunks );
       return 1; 
    }
 
@@ -59,19 +84,25 @@ int encode( char *fileName )
       perror( "Error opening file" );
       close( fd );
       free( buffer );
+      free( chunks );
       return 1;
    }
 
-   unsigned int bytesRead = read( fd, buffer, READ_SIZE );
-   unsigned int bufferOffset = bytesRead;
-   if ( bytesRead == -1 )
+   // Get file size by seeking to end, then seek back to beginning
+   unsigned int fileSize = lseek( fd, 0, SEEK_END );
+   if ( fileSize == -1 || lseek( fd, 0, SEEK_SET ) != 0 )
    {
-      perror( "Error reading file" );
+      perror( "Error getting file size" );
       close( fd );
       free( buffer );
+      free( chunks );
       return 1;
    }
-   while ( bytesRead == RAW_CHUNK_SIZE_BITS && bufferOffset < ( ( RAW_CHUNK_SIZE_BITS * ( CHUNKS_IN_BUFFER - 1 ) ) ) )
+
+   // Read file into buffer
+   unsigned int bytesRead;
+   unsigned int bufferOffset = 0;
+   do
    {
       bytesRead = read( fd, buffer + bufferOffset, READ_SIZE );
       if ( bytesRead == -1 )
@@ -79,21 +110,46 @@ int encode( char *fileName )
          perror( "Error reading file" );
          close( fd );
          free( buffer );
+         free( chunks );
          return 1;
       }
 
       bufferOffset += bytesRead;
    }
+   while ( bytesRead == RAW_CHUNK_SIZE_BITS && bufferOffset < ( ( RAW_CHUNK_SIZE_BITS * ( CHUNKS_IN_BUFFER - 1 ) ) ) );
 
    // Iterate through the buffer, passing 11 bits at a time to populateChunk
+   unsigned int bitOffset;
+   unsigned int byteIndex;
+   unsigned int bitIndex;
+   unsigned int rawData;
+   unsigned int chunkCount = ( fileSize * BITS_PER_BYTE ) / RAW_CHUNK_SIZE_BITS;
+   for ( int chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++ )
+   {
+      rawData = 0;
+      bitOffset = chunkIndex * RAW_CHUNK_SIZE_BITS;
 
+      // For this chunk, check each of the 11 bits and copy them to rawData
+      for ( int chunkOffset = 0; chunkOffset < RAW_CHUNK_SIZE_BITS; chunkOffset++ )
+      {
+         byteIndex = ( bitOffset + chunkOffset ) / BITS_PER_BYTE;
+         bitIndex = ( bitOffset + chunkOffset ) % BITS_PER_BYTE;
 
+         rawData |= ( buffer[ byteIndex ] >> ( 7 - bitIndex ) & 1 ) << ( 10 - chunkOffset );
+      }
 
-   unsigned int *rawData = ( unsigned int * ) buffer + bufferOffset - RAW_CHUNK_SIZE_BITS;
-   chunk *c = populateChunk( rawData );
+      printf( "Raw data: " );
+      printBinary( rawData, RAW_CHUNK_SIZE_BITS );
+      printf( "\n" );
+
+      chunks[ chunkIndex ] = populateChunk( rawData );
+      printf( "Chunk %d\n\n", chunkIndex );
+      printChunk( &chunks[ chunkIndex ] );
+      printf( "\n" );
+   }
 
    close( fd );
    free( buffer );
-   free( c );
+   free( chunks );
    return 0;
 }

@@ -10,18 +10,19 @@ int main( int argc, char **argv )
       return 1;
    }
 
-   unsigned int rawData = 0xeef;
-   printf( "Raw data: %u\n", rawData );
-   chunk *encodedChunk = populateChunk( &rawData );
-   printf( "Data bits: %u %u %u %u %u %u\n",
-           encodedChunk->dataBitsThree,
-           encodedChunk->dataBitsFiveToSeven,
-           encodedChunk->dataBitsNineToFifteen,
-           encodedChunk->parityZeroToTwo,
-           encodedChunk->parityFour,
-           encodedChunk->parityEight
-   );
+   encode( argv[1] );
 
-   free( encodedChunk );
+   // unsigned int rawData = 0xeef;
+   // printf( "Raw data: %u\n", rawData );
+   // chunk encodedChunk = populateChunk( rawData );
+   // printf( "Data bits: %u %u %u %u %u %u\n",
+   //         encodedChunk.dataBitsThree,
+   //         encodedChunk.dataBitsFiveToSeven,
+   //         encodedChunk.dataBitsNineToFifteen,
+   //         encodedChunk.parityZeroToTwo,
+   //         encodedChunk.parityFour,
+   //         encodedChunk.parityEight
+   // );
+
    return 0;
 }
