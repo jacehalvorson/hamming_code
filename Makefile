@@ -21,7 +21,6 @@ hamming: $(OBJ)
 # Rule for building and running the tests
 test: $(TEST_OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
-	./test
 
 # Cleanup rule
 clean:

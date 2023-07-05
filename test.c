@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "hamming.h"
 #include "test.h"
@@ -24,9 +25,9 @@ void runTest( unsigned int testIndex )
    };
 
    // Unsigned integer can't be negative, but make sure it's in range
-   if ( testIndex < testList.length )
+   if ( testIndex > 0 && testIndex <= testList.length )
    {
-      testList.tests[ testIndex ]( testIndex );
+      testList.tests[ testIndex-1 ]( testIndex );
    }
    else
    {
@@ -49,7 +50,7 @@ void runTests( void )
    for ( unsigned int i = 0; i < testList.length; i++ )
    {
       // Call the ith function in the test list
-      testList.tests[ i ]( i );
+      testList.tests[ i ]( i+1 );
    }
 }
 
@@ -57,8 +58,7 @@ void testPopulateChunk( unsigned int testIndex )
 {
    int successCount = 0;
    int totalCount = 0;
-
-   printf( "Test %u\nRunning testPopulateChunk...\n", testIndex );
+   printf( "Test %u\nRunning testPopulateChunk...\n\n", testIndex );
 
    // Test case loop
    for ( int i = 0; i < populateChunkTestCaseCount; i++ )
@@ -67,7 +67,7 @@ void testPopulateChunk( unsigned int testIndex )
       chunk expected = populateChunkTestArray[ i ].expectedChunk;
       chunk actual = populateChunk( rawData );
 
-      printf( "Test case %d: ", i );
+      printf( "Test case %d: ", i+1 );
       if ( memcmp( &actual, &expected, sizeof( chunk ) ) == 0 )
       {
          printf( "Passed\n" );
@@ -86,26 +86,47 @@ void testPopulateChunk( unsigned int testIndex )
       printf( "\n" );
    }
 
-   printf( "Test cases passed: %d/%d\n", successCount, totalCount );
+   printf( "Test cases passed: %d/%d\n\n", successCount, totalCount );
 }
 
 void testEncode( unsigned int testIndex )
 {
-   printf( "Test %u\nRunning testEncode...\n", testIndex );
+   int successCount = 0;
+   int totalCount = 0;
+   printf( "Test %u\nRunning testEncode...\n\n", testIndex );
 
    encode( "sample.txt" );
+   printf( "Test cases passed: %d/%d\n\n", successCount, totalCount );
 }
 
 int main( int argc, char **argv )
 {
-   if ( argc != 1 )
+   unsigned int testIndex = 0;
+   switch ( argc )
    {
-      printf( "Usage: %s\n", argv[ 0 ] );
-      return 1;
+      case 1:
+         // No arguments, run all tests
+         runTests( );
+         break;
+      case 2:
+         // User specified a test index
+         testIndex = atoi( argv[ 1 ] );
+         if ( testIndex > 0 )
+         {
+            if ( testIndex > 0 )
+            {
+               runTest( testIndex );
+            }
+         }
+         else
+         {
+            printf( "Invalid test index: %s\n", argv[ 1 ] );
+         }
+         break;
+      default:
+         printf( "Usage: test [testIndex]\n" );
+         return 1;
    }
-
-   // Run tests
-   runTests( );
 
    return 0;
 }

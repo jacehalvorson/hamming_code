@@ -1,6 +1,12 @@
 # hamming_code
 ```
-make clean
-make
+
+```
+### Run all tests
+```
 ./hamming <file>
+```
+### Run specific test
+```
+make test
 ```
