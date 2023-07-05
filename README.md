@@ -30,7 +30,7 @@ make test
 ```
 
 ## Credits
-This program was developed by Jace Halvorson. If you have any questions or suggestions, please contact me at jacehalvorson33@gmail.com. Inspiration for this project came from a YouTube series from 3Blue1Brown and Ben Eater. They provide an engaging and in-depth explanation of Hamming Codes, so look to these videos to further understand the concepts and logic used in this project.
+This program was developed by Jace Halvorson. If you have any questions or suggestions, please contact me at jacehalvorson33@gmail.com. Inspiration for this project came from a 3-part YouTube series from 3Blue1Brown and Ben Eater. They provide an engaging and in-depth explanation of Hamming Codes, so look to these videos to further understand the concepts and logic used in this project.
 
 - [Part 1](https://www.youtube.com/watch?v=X8jsijhllIA)
 - [Part 2](https://www.youtube.com/watch?v=b3NxrZOu_CE&t=0s)

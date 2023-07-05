@@ -11,5 +11,7 @@ int main( int argc, char **argv )
       return 1;
    }
 
+   encode( argv[1] );
+
    return 0;
 }
