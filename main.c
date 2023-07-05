@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "hamming.h"
+#include "test.h"
 
 int main( int argc, char **argv )
 {
@@ -10,7 +11,9 @@ int main( int argc, char **argv )
       return 1;
    }
 
-   encode( argv[1] );
+   testPopulateChunk( );
+
+   // encode( argv[1] );
 
    // unsigned int rawData = 0xeef;
    // printf( "Raw data: %u\n", rawData );
