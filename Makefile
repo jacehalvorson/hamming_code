@@ -25,4 +25,4 @@ test: $(TEST_OBJ)
 
 # Cleanup rule
 clean:
-	rm -f hamming test $(OBJ)
+	rm -f hamming test *.o
