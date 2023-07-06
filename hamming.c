@@ -7,9 +7,38 @@
 #include "hamming.h"
 #include "chunk.h"
 
-int writeToFile( const char *fileName, const char *buffer, size_t numBytes )
+int readFromFile( const char *fileName, char *buffer, int maxNumBytes )
 {
-   printf( "Checking %s\n", fileName );
+   int fd = open( fileName, O_RDONLY );
+   if ( fd == -1 )
+   {
+      perror( "Error opening file" );
+      close( fd );
+      return -1;
+   }
+
+   int bytesRead;
+   int bufferOffset = 0;
+   do
+   {
+      bytesRead = read( fd, buffer + bufferOffset, maxNumBytes - bufferOffset );
+      if ( bytesRead == -1 )
+      {
+         perror( "Error reading from file" );
+         close( fd );
+         return -1;
+      }
+
+      bufferOffset += bytesRead;
+   }
+   while ( bytesRead == READ_SIZE && bufferOffset < maxNumBytes );
+
+   close( fd );
+   return bytesRead;
+}
+
+int writeToFile( const char *fileName, const char *buffer, int numBytes )
+{
    if ( access( fileName, F_OK ) != -1 )
    {
       printf( "File %s already exists, want to override? [y/n] ", fileName );
@@ -25,24 +54,23 @@ int writeToFile( const char *fileName, const char *buffer, size_t numBytes )
          else
          {
             printf( "\nExiting\n" );
-            return 1;
+            return -1;
          }
       }
       else
       {
          perror( "Error reading input" );
-         return 1;
+         return -1;
       }
    }
 
    // File doesn't exist, so we can use this name
-   printf( "Using %s\n", fileName );
    int fd = open( fileName, O_CREAT | O_TRUNC | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
    if ( fd == -1 )
    {
       perror( "Error opening file" );
       close( fd );
-      return 1;
+      return -1;
    }
 
    while ( numBytes > 0 )
@@ -52,21 +80,22 @@ int writeToFile( const char *fileName, const char *buffer, size_t numBytes )
       {
          perror( "Error writing to file" );
          close( fd );
-         return 1;
+         return -1;
       }
 
       numBytes -= bytesWritten;
       buffer += bytesWritten;
    }
 
+   int fileSize = lseek( fd, 0, SEEK_END );
    close( fd );
-   return 0;
+   return fileSize;
 }
 
 int encode( const char *fileName )
 {
    chunk *chunks = malloc( sizeof( chunk ) * CHUNKS_IN_BUFFER );
-   char *buffer = malloc( RAW_CHUNK_SIZE_BITS * CHUNKS_IN_BUFFER );
+   char *buffer = malloc( RAW_CHUNK_SIZE_BITS * CHUNKS_IN_BUFFER / BITS_PER_BYTE );
    if ( buffer == NULL )
    {
       perror( "Error allocating memory" );
@@ -75,64 +104,18 @@ int encode( const char *fileName )
       return 1; 
    }
 
-   int fd = open( fileName, O_RDONLY );
-   if ( fd == -1 )
+   // Read the file into the buffer
+   int fileSize = readFromFile( fileName, buffer, CHUNKS_IN_BUFFER * RAW_CHUNK_SIZE_BITS / BITS_PER_BYTE );
+   if ( fileSize == -1 )
    {
-      perror( "Error opening file" );
-      close( fd );
       free( buffer );
       free( chunks );
       return 1;
    }
+   printf( "File size: %d bytes\n", fileSize );
 
-   // Get file size by seeking to end, then seek back to beginning
-   unsigned int fileSize = lseek( fd, 0, SEEK_END );
-   if ( fileSize == -1U || lseek( fd, 0, SEEK_SET ) != 0 )
-   {
-      perror( "Error getting file size" );
-      close( fd );
-      free( buffer );
-      free( chunks );
-      return 1;
-   }
-
-   // Read file into buffer
-   unsigned int bytesRead;
-   unsigned int bufferOffset = 0;
-   do
-   {
-      bytesRead = read( fd, buffer + bufferOffset, READ_SIZE );
-      if ( bytesRead == -1U )
-      {
-         perror( "Error reading file" );
-         close( fd );
-         free( buffer );
-         free( chunks );
-         return 1;
-      }
-
-      bufferOffset += bytesRead;
-   }
-   while ( bytesRead == READ_SIZE && bufferOffset < ( ( RAW_CHUNK_SIZE_BITS * CHUNKS_IN_BUFFER ) / BITS_PER_BYTE ) );
-   if ( close( fd ) == -1 )
-   {
-      perror( "Error closing file" );
-      free( buffer );
-      free( chunks );
-      return 1;
-   }
-
-   if ( bufferOffset >= ( ( RAW_CHUNK_SIZE_BITS * CHUNKS_IN_BUFFER ) / BITS_PER_BYTE ) )
-   {
-      // File is smaller than the buffer, so we can just encode it all at once
-      printf( "File is too big for buffer size %d\n", ( CHUNKS_IN_BUFFER * RAW_CHUNK_SIZE_BITS ) / BITS_PER_BYTE );
-      free( buffer );
-      free( chunks );
-      return 1;
-   }
-
-   unsigned int bitOffset;
-   unsigned int byteIndex;
+   int bitOffset;
+   int byteIndex;
    unsigned int bitIndex;
    // Leave room for an extra chunk if the file size isn't a multiple of 11
    unsigned int fileChunkCount = ( fileSize * BITS_PER_BYTE / RAW_CHUNK_SIZE_BITS ) + 1;
@@ -154,7 +137,7 @@ int encode( const char *fileName )
          bitIndex = ( bitOffset + chunkOffset ) % BITS_PER_BYTE;
 
          // Don't read past the end of what was read from the file
-         if ( byteIndex < bufferOffset )
+         if ( byteIndex < fileSize )
          {
             rawData |= ( buffer[ byteIndex ] >> ( 7 - bitIndex ) & 1 ) << ( 10 - chunkOffset );
          }
@@ -181,5 +164,22 @@ int encode( const char *fileName )
 
 int decode( const char *fileName )
 {
+   chunk *chunks = malloc( sizeof( chunk ) * CHUNKS_IN_BUFFER );
+   
+   // Read the file into the buffer
+   int fileSize = readFromFile( fileName, (char *)chunks, sizeof( chunk ) * CHUNKS_IN_BUFFER );
+   if ( fileSize == -1 )
+   {
+      free( chunks );
+      return 1;
+   }
+
+   int chunkCount = fileSize / sizeof( chunk );
+   for ( int i = 0; i < chunkCount; i++ )
+   {
+      printBinary( decodeChunk( chunks[ i ] ), 11 );
+   }
+
+   free( chunks );
    return 0;
 }

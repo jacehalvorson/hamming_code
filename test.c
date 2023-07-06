@@ -109,13 +109,14 @@ void testEncode( unsigned int testIndex )
       sprintf( resultFileName, "%s.ham", testData[ i ] );
       if ( access( resultFileName, F_OK ) == 0 )
       {
-         printf( "Passed %s\n", resultFileName );
+         printf( "Passed\n" );
          successCount++;
       }
       else
       {
          printf( "Failed\n" );
       }
+      printf( "\n" );
    }
 
    printf( "Test cases passed: %d/%d\n\n", successCount, testCaseCount );
