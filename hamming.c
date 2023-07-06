@@ -73,9 +73,10 @@ int writeToFile( const char *fileName, const char *buffer, int numBytes )
       return -1;
    }
 
+   int bufferOffset = 0;
    while ( numBytes > 0 )
    {
-      int bytesWritten = write( fd, buffer, numBytes );
+      int bytesWritten = write( fd, buffer + bufferOffset, numBytes );
       if ( bytesWritten == -1 )
       {
          perror( "Error writing to file" );
@@ -84,12 +85,11 @@ int writeToFile( const char *fileName, const char *buffer, int numBytes )
       }
 
       numBytes -= bytesWritten;
-      buffer += bytesWritten;
+      bufferOffset += bytesWritten;
    }
 
-   int fileSize = lseek( fd, 0, SEEK_END );
    close( fd );
-   return fileSize;
+   return bufferOffset;
 }
 
 int encode( const char *fileName )
@@ -116,10 +116,16 @@ int encode( const char *fileName )
    int bitOffset;
    int byteIndex;
    unsigned int bitIndex;
-   // Leave room for an extra chunk if the file size isn't a multiple of 11
-   unsigned int fileChunkCount = ( fileSize * BITS_PER_BYTE / RAW_CHUNK_SIZE_BITS ) + 1;
+
+   unsigned int fileChunkCount = ( fileSize * BITS_PER_BYTE / RAW_CHUNK_SIZE_BITS );
+   if ( ( fileSize * BITS_PER_BYTE ) % RAW_CHUNK_SIZE_BITS != 0 )
+   {
+      // Leave room for an extra chunk if the file size isn't a multiple of 11
+      fileChunkCount++;
+   }
    // Take the minimum of the chunks in the file and what can fit in the buffer
    unsigned int chunkCount = ( fileChunkCount < CHUNKS_IN_BUFFER ) ? fileChunkCount : CHUNKS_IN_BUFFER;
+   
    // Used to copy 11 bytes from the buffer and pass them to populateChunk
    unsigned short rawData;
    
@@ -152,9 +158,8 @@ int encode( const char *fileName )
       chunks[ chunkIndex ] = populateChunk( rawData );
    }
 
-   char encodedFileName[ strlen( fileName ) + 1 ];
-   strcpy( encodedFileName, fileName );
-   strcpy( encodedFileName + strlen( fileName ) - 4, ".ham" );
+   char encodedFileName[ strlen( fileName ) + 5 ];
+   sprintf( encodedFileName, "%s.ham", fileName );
    writeToFile( encodedFileName, (char *)chunks, chunkCount * sizeof( chunk ) );
 
    free( buffer );
@@ -218,16 +223,10 @@ int decode( const char *fileName )
          }
       }
    }
-   for ( int i = 0; i <= byteIndex; i++ )
-   {
-      printBinary( decodedBuffer[ i ], 8 );
-      printf( "\n" );
-   }
 
    // Write decoded data to new file
-   char decodedFileName[ strlen( fileName ) + 1 ];
-   strcpy( decodedFileName, fileName );
-   strcpy( decodedFileName + strlen( fileName ) - 4, ".dec" );
+   char decodedFileName[ strlen( fileName ) + 5 ];
+   sprintf( decodedFileName, "%s.dec", fileName );
    writeToFile( decodedFileName, (char *)decodedBuffer, chunkCount * RAW_CHUNK_SIZE_BITS / BITS_PER_BYTE );
 
    return 0;

@@ -33,7 +33,6 @@ unsigned short decodeChunk( chunk encodedChunk )
    unsigned short chunkData;
    unsigned short xorResult = xorChunk( encodedChunk );
    unsigned int overallParity = getOverallParity( encodedChunk );
-   printf( "XOR result: %u, parity = %u\n", xorResult, overallParity );
    if ( ( xorResult > 0 && !overallParity ) ||
         ( xorResult == 0 && overallParity ) )
    {
@@ -56,17 +55,13 @@ unsigned short decodeChunk( chunk encodedChunk )
    else
    {
       // There were no errors
-      printf( "No errors in chunk.\n" );
    }
 
    // Extract data bits into the last 11 bits of the unsigned short
-   printf( "Chunk:\n" );
    unsigned short dataBits = 0;
    dataBits |= encodedChunk.dataBitsThree << ( RAW_CHUNK_SIZE_BITS - 1 );
    dataBits |= encodedChunk.dataBitsFiveToSeven << ( RAW_CHUNK_SIZE_BITS - 4 );
    dataBits |= encodedChunk.dataBitsNineToFifteen;
-   printBinary( dataBits, 16 );
-   printf( "\n" );
 
    // Return the chunk in unsigned short form
    return dataBits & 0x7FF;
