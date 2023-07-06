@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "hamming.h"
 #include "test.h"
 
@@ -57,11 +58,11 @@ void runTests( void )
 void testPopulateChunk( unsigned int testIndex )
 {
    int successCount = 0;
-   int totalCount = 0;
+   int testCaseCount = 5;
    printf( "Test %u\nRunning testPopulateChunk...\n\n", testIndex );
 
    // Test case loop
-   for ( int i = 0; i < populateChunkTestCaseCount; i++ )
+   for ( int i = 0; i < testCaseCount; i++ )
    {
       unsigned int rawData = populateChunkTestArray[ i ].rawData;
       chunk expected = populateChunkTestArray[ i ].expectedChunk;
@@ -82,21 +83,42 @@ void testPopulateChunk( unsigned int testIndex )
          printChunk( expected );
          printf( "XOR Result: %u\n", xorChunk( expected ) );
       }
-      totalCount++;
       printf( "\n" );
    }
 
-   printf( "Test cases passed: %d/%d\n\n", successCount, totalCount );
+   printf( "Test cases passed: %d/%d\n\n", successCount, testCaseCount );
 }
 
 void testEncode( unsigned int testIndex )
 {
    int successCount = 0;
-   int totalCount = 0;
+   int testCaseCount = 2;
    printf( "Test %u\nRunning testEncode...\n\n", testIndex );
 
-   encode( "sample.txt" );
-   printf( "Test cases passed: %d/%d\n\n", successCount, totalCount );
+   char testData[ 2 ][ INPUT_BUFFER_LENGTH ] = { "sample.txt", "sample.hex" };
+
+   for ( int i = 0; i < testCaseCount; i++ )
+   {
+      printf( "Test case %d: ", i+1 );
+
+      encode( testData[ i ] );
+
+      // Truncate the file extension and append .ham
+      testData[ i ][ strlen( testData[ i ] ) - 4 ] = '\0';
+      char resultFileName[ strlen( testData[ i ] ) ];
+      sprintf( resultFileName, "%s.ham", testData[ i ] );
+      if ( access( resultFileName, F_OK ) == 0 )
+      {
+         printf( "Passed %s\n", resultFileName );
+         successCount++;
+      }
+      else
+      {
+         printf( "Failed\n" );
+      }
+   }
+
+   printf( "Test cases passed: %d/%d\n\n", successCount, testCaseCount );
 }
 
 int main( int argc, char **argv )

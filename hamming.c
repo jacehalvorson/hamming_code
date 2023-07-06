@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include "hamming.h"
 #include "chunk.h"
 
@@ -137,7 +138,6 @@ int encode( const char *fileName )
    unsigned int fileChunkCount = ( fileSize * BITS_PER_BYTE / RAW_CHUNK_SIZE_BITS ) + 1;
    // Take the minimum of the chunks in the file and what can fit in the buffer
    unsigned int chunkCount = ( fileChunkCount < CHUNKS_IN_BUFFER ) ? fileChunkCount : CHUNKS_IN_BUFFER;
-   unsigned int chunkLeftOver = ( fileSize * BITS_PER_BYTE ) % RAW_CHUNK_SIZE_BITS;
    // Used to copy 11 bytes from the buffer and pass them to populateChunk
    unsigned short rawData;
    
@@ -160,7 +160,7 @@ int encode( const char *fileName )
          }
          else
          {
-            printf( "All file contents have been read. %d bytes of padding added\n", RAW_CHUNK_SIZE_BITS - chunkOffset );
+            printf( "All file contents have been read. %d bits of padding added\n", RAW_CHUNK_SIZE_BITS - chunkOffset );
             break;
          }
       }
@@ -169,7 +169,10 @@ int encode( const char *fileName )
       chunks[ chunkIndex ] = populateChunk( rawData );
    }
 
-   writeToFile( "encoded.ham", (char *)chunks, chunkCount * sizeof( chunk ) );
+   char encodedFileName[ strlen( fileName ) + 1 ];
+   strcpy( encodedFileName, fileName );
+   strcpy( encodedFileName + strlen( fileName ) - 4, ".ham" );
+   writeToFile( encodedFileName, (char *)chunks, chunkCount * sizeof( chunk ) );
 
    free( buffer );
    free( chunks );
