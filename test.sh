@@ -19,7 +19,7 @@ do
    ./hamming e $file
    ./hamming d $file.ham
    diff_output=$(diff $file $file.ham.dec)
-   if [ -n "$diff_output" ];
+   if [ -z "$diff_output" ];
    then
       echo "Test passed for file $file"
       passed=$((passed+1))

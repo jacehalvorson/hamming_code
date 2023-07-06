@@ -86,7 +86,7 @@ void testPopulateChunk( unsigned int testIndex )
       printf( "\n" );
    }
 
-   printf( "Test cases passed: %d/%d\n\n", successCount, testCaseCount );
+   printf( "populateChunk tests: Passed %d/%d\n\n", successCount, testCaseCount );
 }
 
 void testEncode( unsigned int testIndex )
