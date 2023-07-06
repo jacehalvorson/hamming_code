@@ -28,48 +28,89 @@ chunk populateChunk( unsigned short rawData )
    return newChunk;
 }
 
-unsigned short decodeChunk( const chunk chunk )
+unsigned short decodeChunk( chunk encodedChunk )
 {
-   unsigned short chunkData = 1;
-   unsigned short xorResult = xorChunk( chunk );
-   if ( xorResult > 0 )
+   unsigned short chunkData;
+   unsigned short xorResult = xorChunk( encodedChunk );
+   unsigned int overallParity = getOverallParity( encodedChunk );
+   printf( "XOR result: %u, parity = %u\n", xorResult, overallParity );
+   if ( ( xorResult > 0 && !overallParity ) ||
+        ( xorResult == 0 && overallParity ) )
    {
-      // There was at least one error, check if there were more
-      if ( getOverallParity( chunk ) )
-      {
-         // There was only one error (Possibly more than 2, but this program doesn't support triple bit error correction)
-         // Flip the bit at the position indicated by the XOR result
-         chunkData = chunkToUnsignedShort( chunk );
-         chunkData ^= ( 0x8000 >> xorResult );
-      }
-      else
-      {
-         // There was more than one error, return an error
-         printf( "Double bit error in chunk. Exiting...\n" );
-         return 1;
-      }
+      // There was more than one error, return an error
+      printf( "Double bit error in chunk. Exiting...\n" );
+      return 1;
    }
 
+   if ( xorResult > 0 )
+   {
+      // There was only one error (Possibly more than 2, but this program doesn't support triple bit error correction/detection)
+      // Flip the bit at the position indicated by the XOR result
+      printf( "Single bit error in chunk. Flipping bit %d\n", xorResult );
+      printChunk( encodedChunk );
+      chunkData = chunkToUnsignedShort( encodedChunk );
+      chunkData ^= ( 0x8000 >> xorResult );
+      encodedChunk = unsignedShortToChunk( chunkData );
+      printChunk( encodedChunk );
+   }
+   else
+   {
+      // There were no errors
+      printf( "No errors in chunk.\n" );
+   }
+
+   // Extract data bits into the last 11 bits of the unsigned short
+   printf( "Chunk:\n" );
+   unsigned short dataBits = 0;
+   dataBits |= encodedChunk.dataBitsThree << ( RAW_CHUNK_SIZE_BITS - 1 );
+   dataBits |= encodedChunk.dataBitsFiveToSeven << ( RAW_CHUNK_SIZE_BITS - 4 );
+   dataBits |= encodedChunk.dataBitsNineToFifteen;
+   printBinary( dataBits, 16 );
+   printf( "\n" );
+
    // Return the chunk in unsigned short form
-   return chunkData;
+   return dataBits & 0x7FF;
 }
 
-unsigned short chunkToUnsignedShort( const chunk chunk )
+// Only copies 16 bits into a chunk, does not calculate parity bits
+chunk unsignedShortToChunk( const unsigned short chunkData )
 {
-   unsigned short result = 0;
+   chunk newChunk;
+
+   // Initialize all bits to 0
+   memset( &newChunk, 0, sizeof( chunk ) );
 
    // Copy parity bits
-   result |= chunk.parityBitsZero << ( CHUNK_SIZE_BITS - 1 );
-   result |= chunk.parityBitsOneToTwo << ( CHUNK_SIZE_BITS - 3 );
-   result |= chunk.parityBitsFour << ( CHUNK_SIZE_BITS - 5 );
-   result |= chunk.parityBitsEight << ( CHUNK_SIZE_BITS - 9 );
+   newChunk.parityBitsZero = ( chunkData >> ( CHUNK_SIZE_BITS - 1 ) ) & 0x1;
+   newChunk.parityBitsOneToTwo = ( chunkData >> ( CHUNK_SIZE_BITS - 3 ) ) & 0x3;
+   newChunk.parityBitsFour = ( chunkData >> ( CHUNK_SIZE_BITS - 5 ) ) & 0x1;
+   newChunk.parityBitsEight = ( chunkData >> ( CHUNK_SIZE_BITS - 9 ) ) & 0x1;
 
    // Copy data bits
-   result |= chunk.dataBitsThree << ( CHUNK_SIZE_BITS - 4 );
-   result |= chunk.dataBitsFiveToSeven << ( CHUNK_SIZE_BITS - 8 );
-   result |= chunk.dataBitsNineToFifteen;
+   newChunk.dataBitsThree = ( chunkData >> ( CHUNK_SIZE_BITS - 4 ) ) & 0x1;
+   newChunk.dataBitsFiveToSeven = ( chunkData >> ( CHUNK_SIZE_BITS - 8 ) ) & 0x7;
+   newChunk.dataBitsNineToFifteen = chunkData & 0x7F;
 
-   return result;
+   return newChunk;
+}
+
+// Copies 16 bits from a chunk into an unsigned short for use with bitwise operators
+unsigned short chunkToUnsignedShort( const chunk chunk )
+{
+   unsigned short chunkData = 0;
+
+   // Copy parity bits
+   chunkData |= chunk.parityBitsZero << ( CHUNK_SIZE_BITS - 1 );
+   chunkData |= chunk.parityBitsOneToTwo << ( CHUNK_SIZE_BITS - 3 );
+   chunkData |= chunk.parityBitsFour << ( CHUNK_SIZE_BITS - 5 );
+   chunkData |= chunk.parityBitsEight << ( CHUNK_SIZE_BITS - 9 );
+
+   // Copy data bits
+   chunkData |= chunk.dataBitsThree << ( CHUNK_SIZE_BITS - 4 );
+   chunkData |= chunk.dataBitsFiveToSeven << ( CHUNK_SIZE_BITS - 8 );
+   chunkData |= chunk.dataBitsNineToFifteen;
+
+   return chunkData;
 }
 
 unsigned int xorChunk( const chunk chunk )

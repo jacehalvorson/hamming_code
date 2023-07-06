@@ -34,7 +34,7 @@ int readFromFile( const char *fileName, char *buffer, int maxNumBytes )
    while ( bytesRead == READ_SIZE && bufferOffset < maxNumBytes );
 
    close( fd );
-   return bytesRead;
+   return bufferOffset;
 }
 
 int writeToFile( const char *fileName, const char *buffer, int numBytes )
@@ -112,7 +112,6 @@ int encode( const char *fileName )
       free( chunks );
       return 1;
    }
-   printf( "File size: %d bytes\n", fileSize );
 
    int bitOffset;
    int byteIndex;
@@ -139,6 +138,7 @@ int encode( const char *fileName )
          // Don't read past the end of what was read from the file
          if ( byteIndex < fileSize )
          {
+            // Copy the bit at the current offset to the current 11-bit group
             rawData |= ( buffer[ byteIndex ] >> ( 7 - bitIndex ) & 1 ) << ( 10 - chunkOffset );
          }
          else
@@ -173,13 +173,62 @@ int decode( const char *fileName )
       free( chunks );
       return 1;
    }
+   printf( "File size: %d\n", fileSize );
 
    int chunkCount = fileSize / sizeof( chunk );
-   for ( int i = 0; i < chunkCount; i++ )
+   if ( fileSize % sizeof( chunk ) != 0 )
    {
-      printBinary( decodeChunk( chunks[ i ] ), 11 );
+      printf( "File size is not a multiple of %ld\n", sizeof( chunk ) );
+      free( chunks );
+      return 1;
    }
 
+   // Convert the chunks to raw data (unsigned short array)
+   unsigned short rawDataBuffer[ chunkCount ];
+   for ( int chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++ )
+   {
+      rawDataBuffer[ chunkIndex ] = decodeChunk( chunks[ chunkIndex ] );
+   }
+   // Data exists as unsigned shorts on the stack, free memory used for chunk buffer
    free( chunks );
+
+   char decodedBuffer[ ( chunkCount * RAW_CHUNK_SIZE_BITS + 1 ) / BITS_PER_BYTE ];
+   memset( decodedBuffer, 0, sizeof( decodedBuffer ) );
+   int byteIndex;
+   int bitIndex;
+
+   // Iterate through unsigned shorts in the raw data buffer, saving 11 bits at a time
+   for ( int chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++ )
+   {
+      // For this chunk, check each of the 11 bits and copy them to decodedBuffer
+      for ( int chunkOffset = 0; chunkOffset < RAW_CHUNK_SIZE_BITS; chunkOffset++ )
+      {
+         byteIndex = ( chunkIndex * RAW_CHUNK_SIZE_BITS + chunkOffset ) / BITS_PER_BYTE;
+         bitIndex = ( chunkIndex * RAW_CHUNK_SIZE_BITS + chunkOffset ) % BITS_PER_BYTE;
+
+         // Don't read past the end of what was read from the file
+         if ( byteIndex < fileSize )
+         {
+            decodedBuffer[ byteIndex ] |= ( ( rawDataBuffer[ chunkIndex ] >> ( 10 - chunkOffset ) ) & 1 ) << ( 7 - bitIndex );
+         }
+         else
+         {
+            printf( "All file contents have been read. %d bits of padding added\n", RAW_CHUNK_SIZE_BITS - chunkOffset );
+            break;
+         }
+      }
+   }
+   for ( int i = 0; i <= byteIndex; i++ )
+   {
+      printBinary( decodedBuffer[ i ], 8 );
+      printf( "\n" );
+   }
+
+   // Write decoded data to new file
+   char decodedFileName[ strlen( fileName ) + 1 ];
+   strcpy( decodedFileName, fileName );
+   strcpy( decodedFileName + strlen( fileName ) - 4, ".dec" );
+   writeToFile( decodedFileName, (char *)decodedBuffer, chunkCount * RAW_CHUNK_SIZE_BITS / BITS_PER_BYTE );
+
    return 0;
 }

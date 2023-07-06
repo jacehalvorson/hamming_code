@@ -22,9 +22,10 @@ typedef struct chunk {
 
 // Takes in 11 bits of data and returns a chunk with the parity bits set.
 chunk populateChunk( unsigned short rawData );
-unsigned short decodeChunk( const chunk chunk );
+unsigned short decodeChunk( chunk chunk );
 
 // Helper functions
+chunk unsignedShortToChunk( const unsigned short chunkData );
 unsigned short chunkToUnsignedShort( const chunk chunk );
 unsigned int xorChunk( const chunk chunk );
 unsigned int getOverallParity( const chunk chunk );
