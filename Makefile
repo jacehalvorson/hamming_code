@@ -2,13 +2,12 @@ CC = gcc
 CFLAGS = -g -Wall -Wextra
 
 # List of source files
-SRC = main.c hamming.c chunk.c
+SRC = main.c hamming.c chunk.c file.c
 
 # List of object files
 OBJ = $(SRC:.c=.o)
 # Replace main.o with test.o
 TEST_OBJ = $(filter-out main.o, $(OBJ)) test.o
-
 
 # Main target
 hamming: $(OBJ)
@@ -21,6 +20,7 @@ hamming: $(OBJ)
 # Rule for building and running the tests
 test: $(TEST_OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
+	./test.sh
 
 # Cleanup rule
 clean:

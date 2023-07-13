@@ -8,11 +8,13 @@
 
 #define BITS_PER_BYTE 8
 
+typedef struct header {
+   int chunkCount;
+   int reserved[7];
+} header;
+
 int encode( const char *fileName );
 int decode( const char *fileName );
 void populateChunkArray( chunk *chunks, const int chunkCount, const char *buffer, const int bytesRead );
-int checkFileName( const char *fileName );
-int readFromFile( const int fd, char *buffer, int maxNumBytes );
-int writeToFile( const int fd, const char *buffer, int numBytes );
 
 #endif

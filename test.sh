@@ -7,8 +7,8 @@ if [ -z "$(ls -A "$test_folder")" ]; then
    exit 1
 fi
 
-make test
 ./test 1
+
 make
 
 # Encode and decode all files in test folder and check if the decoded files are the same as the original ones
@@ -30,7 +30,7 @@ do
    total=$((total+1))
 done
 
-echo "Encode and decode tests: Passed $passed/$total"
+echo -e "\nEncode and decode tests: Passed $passed/$total\n"
 
 rm "$test_folder"/*.ham "$test_folder"/*.dec
 make clean
