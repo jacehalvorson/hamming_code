@@ -49,34 +49,60 @@ int encode( const char *fileName )
       return 1;
    }
 
+   // Get the size of the file by seeking to end
+   int fileSize = lseek( inputFile, 0, SEEK_END );
+   // Error check the seek and then seek back to the beginning of file
+   if ( fileSize == -1 ||
+        lseek( inputFile, 0, SEEK_SET ) == -1 )
+   {
+      perror( "Error getting file size" );
+      free( buffer );
+      free( chunks );
+      close( inputFile );
+      close( outputFile );
+      return 1;
+   }
+
+   // Write the header of the new encoded file with chunk count 
+   header fileHeader = { fileSize };
+   int bytesWritten = writeToFile( outputFile, (char *)&fileHeader, sizeof( header ) );
+   if ( bytesWritten == -1 )
+   {
+      free( chunks );
+      close( inputFile );
+      close( outputFile );
+      return 1;
+   }
+
    int bytesRead;
+   unsigned int chunkCountInBuffer = 0;
    // Read / Process / Write loop
    do
    {
       // Read the file into the buffer
-      bytesRead = readFromFile( inputFile, buffer, CHUNKS_IN_BUFFER * RAW_CHUNK_SIZE_BITS / BITS_PER_BYTE );
+      bytesRead = readFromFile( inputFile, buffer, BYTES_IN_BUFFER );
       if ( bytesRead == -1 )
       {
          break;
       }
 
-      unsigned int fileChunkCount = ( bytesRead * BITS_PER_BYTE / RAW_CHUNK_SIZE_BITS );
+      chunkCountInBuffer = ( bytesRead * BITS_PER_BYTE / RAW_CHUNK_SIZE_BITS );
       if ( ( bytesRead * BITS_PER_BYTE ) % RAW_CHUNK_SIZE_BITS != 0 )
       {
          // Leave room for an extra chunk if the file size isn't a multiple of 11
-         fileChunkCount++;
+         chunkCountInBuffer++;
       }
-      // Take the minimum of the chunks in the file and what can fit in the buffer
-      unsigned int chunkCount = ( fileChunkCount < CHUNKS_IN_BUFFER ) ? fileChunkCount : CHUNKS_IN_BUFFER;
 
-      populateChunkArray( chunks, chunkCount, buffer, bytesRead );
+      populateChunkArray( chunks, chunkCountInBuffer, buffer, bytesRead );
 
-      if ( writeToFile( outputFile, (char *)chunks, chunkCount * sizeof( chunk ) ) == -1 )
+      // Write the chunks to the output file
+      bytesWritten = writeToFile( outputFile, (char *)chunks, chunkCountInBuffer * sizeof( chunk ) );
+      if ( bytesWritten == -1 )
       {
          break;
       }
    }
-   while ( bytesRead == CHUNKS_IN_BUFFER * RAW_CHUNK_SIZE_BITS / BITS_PER_BYTE );
+   while ( bytesWritten == CHUNKS_IN_BUFFER * sizeof( chunk ) );
 
    free( buffer );
    free( chunks );
@@ -115,7 +141,20 @@ int decode( const char *fileName )
       return 1;
    }
 
-   int bytesRead;
+   // Read the header of the file to get the chunk count
+   header fileHeader;
+   int bytesRead = readFromFile( inputFile, (char *)&fileHeader, sizeof( header ) );
+   if ( bytesRead == -1 )
+   {
+      free( chunks );
+      close( inputFile );
+      close( outputFile );
+      return 1;
+   }
+
+   int bytesToWrite;
+   int totalBytesWritten = 0;
+   int bytesWritten;
    do
    {
       // Read the file into the buffer
@@ -166,13 +205,27 @@ int decode( const char *fileName )
          }
       }
 
-      // Write decoded data to new file
-      if ( writeToFile( outputFile, (char *)decodedBuffer, chunkCount * RAW_CHUNK_SIZE_BITS / BITS_PER_BYTE ) == -1 )
+      // Write decoded data to new file as long as the chunk count is not surpassed
+      bytesToWrite = chunkCount * RAW_CHUNK_SIZE_BITS / BITS_PER_BYTE;
+      if ( totalBytesWritten + bytesToWrite > fileHeader.originalFileSize )
+      {
+         printf( "Decode: Overflow detected, cutting off at %d bytes\n", fileHeader.originalFileSize );
+         bytesToWrite = fileHeader.originalFileSize - totalBytesWritten;
+      }
+
+      bytesWritten = writeToFile( outputFile, (char *)decodedBuffer, bytesToWrite );
+      if  ( bytesWritten == -1 )
       {
          break;
       }
+      totalBytesWritten += bytesWritten;
    }
-   while ( bytesRead == sizeof( chunk ) * CHUNKS_IN_BUFFER );
+   while ( bytesWritten == BYTES_IN_BUFFER );
+
+   if ( totalBytesWritten != fileHeader.originalFileSize )
+   {
+      printf( "Decode: %d bytes written, original file was %d bytes.\n", totalBytesWritten, fileHeader.originalFileSize );
+   }
 
    free( chunks );
    close( inputFile );

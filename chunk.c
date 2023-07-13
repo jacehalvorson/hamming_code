@@ -46,11 +46,9 @@ unsigned short decodeChunk( chunk encodedChunk )
       // There was only one error (Possibly more than 2, but this program doesn't support triple bit error correction/detection)
       // Flip the bit at the position indicated by the XOR result
       printf( "Single bit error in chunk. Flipping bit %d\n", xorResult );
-      printChunk( encodedChunk );
       chunkData = chunkToUnsignedShort( encodedChunk );
       chunkData ^= ( 0x8000 >> xorResult );
       encodedChunk = unsignedShortToChunk( chunkData );
-      printChunk( encodedChunk );
    }
    else
    {
